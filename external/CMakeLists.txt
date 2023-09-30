@@ -103,6 +103,212 @@ add_library(sdl2 INTERFACE)
 target_include_directories(sdl2 INTERFACE "${SDL2_INCLUDE_DIR}")
 target_link_libraries(sdl2 INTERFACE "${SDL2_LIBRARY}")
 
+if(USE_QT_FRONTEND)
+	message(STATUS "Qt frontend enabled")
+endif()
+
+#Qt setup, from https://github.com/yuzu-emu/yuzu/blob/master/CMakeLists.txt
+
+if(USE_QT_FRONTEND AND MSVC)
+	set(USE_BUNDLED_QT ON)
+endif()
+
+# SOLELY for the fact that I want everything to link and build, i'm just going to define all these here for now.
+# todo: come back to this
+option(USE_QT_MULTIMEDIA "Use QtMultimedia for Camera" ON)
+option(USE_QT_WEB_ENGINE "Use QtWebEngine for web applet implementation" ON)
+option(ENABLE_QT_TRANSLATION "Enable translations for the Qt frontend" OFF)
+
+function(download_bundled_external remote_path lib_name prefix_var)
+
+	set(package_base_url "https://github.com/yuzu-emu/")	# take from Yuzu for now since idk if we'll need any other libs?
+	set(package_repo "no_platform")
+	set(package_extension "no_platform")
+	if (WIN32)
+		set(package_repo "ext-windows-bin/raw/master/")
+		set(package_extension ".7z")
+	elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+		set(package_repo "ext-linux-bin/raw/main/")
+		set(package_extension ".tar.xz")
+	elseif (ANDROID)
+		set(package_repo "ext-android-bin/raw/main/")
+		set(package_extension ".tar.xz")
+	else()
+		message(FATAL_ERROR "No package available for this platform")
+	endif()
+	set(package_url "${package_base_url}${package_repo}")
+
+	set(prefix "${CMAKE_BINARY_DIR}/external/${lib_name}")
+	if (NOT EXISTS "${prefix}")
+		message(STATUS "Downloading binaries for ${lib_name}...")
+
+		message(STATUS "Downloading " ${package_url}${remote_path}${lib_name}${package_extension} " to " ${CMAKE_BINARY_DIR}/external/${lib_name}${package_extension})
+
+		file(DOWNLOAD
+				${package_url}${remote_path}${lib_name}${package_extension}
+				"${CMAKE_BINARY_DIR}/external/${lib_name}${package_extension}" SHOW_PROGRESS)
+
+		#message(FATAL_ERROR ${PROJECT_SOURCE_DIR})
+		#execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf "${CMAKE_BINARY_DIR}/external/${lib_name}${package_extension}"
+		#directory "${PROJECT_SOURCE_DIR}/external")
+
+		execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf "${CMAKE_BINARY_DIR}/external/${lib_name}${package_extension}"
+				WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/external")
+	endif()
+	message(STATUS "Using bundled binaries at ${prefix}")
+	set(${prefix_var} "${prefix}" PARENT_SCOPE)
+endfunction()
+
+function(set_qt_components)
+	# Best practice is to ask for all components at once, so they are from the same version
+	set(QT_COMPONENTS Core Widgets Concurrent Gui PARENT_SCOPE)
+	if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+		list(APPEND QT_COMPONENTS DBus)
+	endif()
+	if (USE_QT_MULTIMEDIA)
+		list(APPEND QT_COMPONENTS Multimedia)
+	endif()
+	if (USE_QT_WEB_ENGINE)
+		list(APPEND QT_COMPONENTS WebEngineCore WebEngineWidgets)
+	endif()
+	if (ENABLE_QT_TRANSLATION)
+		list(APPEND QT_COMPONENTS LinguistTools)
+	endif()
+endfunction(set_qt_components)
+
+# Qt5 requires that we find components, so it doesn't fit our pretty little find package function
+if(USE_QT_FRONTEND)
+	set(QT_VERSION 5.15)
+	# These are used to specify minimum versions
+	set(QT5_VERSION 5.15)
+	set(QT_DEFAULT_MAJOR_VERSION 5)
+	set(QT_MAJOR_VERSION 5)
+
+	set(USE_QT_MULTIMEDIA ON)
+	# Check for system Qt on Linux, fallback to bundled Qt
+	if (UNIX AND NOT APPLE)
+		if (NOT USE_BUNDLED_QT)
+			find_package(Qt5 ${QT5_VERSION} COMPONENTS Widgets DBus Multimedia)
+		endif()
+		if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND (NOT Qt5_FOUND OR USE_BUNDLED_QT))
+			# Check for dependencies, then enable bundled Qt download
+
+			# Check that the system GLIBCXX version is compatible
+			find_program(OBJDUMP objdump)
+			if (NOT OBJDUMP)
+				message(FATAL_ERROR "Required program `objdump` not found.")
+			endif()
+			find_library(LIBSTDCXX libstdc++.so.6)
+			execute_process(
+					COMMAND
+					${OBJDUMP} -T ${LIBSTDCXX}
+					COMMAND
+					grep GLIBCXX_3.4.28
+					COMMAND
+					sed "s/[0-9a-f]*.*  //"
+					COMMAND
+					sed "s/ .*//"
+					COMMAND
+					sort -u
+					OUTPUT_VARIABLE
+					GLIBCXX_MET
+			)
+			if (NOT GLIBCXX_MET)
+				message(FATAL_ERROR "Qt too old or not found, and bundled Qt package is not \
+					compatible with this system. Either install Qt ${QT_VERSION}, or provide the path \
+					to Qt by setting the variable Qt5_ROOT.")
+			endif()
+
+			# Check for headers
+			find_package(PkgConfig REQUIRED)
+			pkg_check_modules(QT_DEP_GLU QUIET glu>=9.0.0)
+			if (NOT QT_DEP_GLU_FOUND)
+				message(FATAL_ERROR "Qt bundled package dependency `glu` not found. \
+					Perhaps `libglu1-mesa-dev` needs to be installed?")
+			endif()
+			pkg_check_modules(QT_DEP_MESA QUIET dri>=20.0.8)
+			if (NOT QT_DEP_MESA_FOUND)
+				message(FATAL_ERROR "Qt bundled package dependency `dri` not found. \
+					Perhaps `mesa-common-dev` needs to be installed?")
+			endif()
+
+			# Check for X libraries
+			set(BUNDLED_QT_REQUIREMENTS
+					libxcb-icccm.so.4
+					libxcb-image.so.0
+					libxcb-keysyms.so.1
+					libxcb-randr.so.0
+					libxcb-render-util.so.0
+					libxcb-render.so.0
+					libxcb-shape.so.0
+					libxcb-shm.so.0
+					libxcb-sync.so.1
+					libxcb-xfixes.so.0
+					libxcb-xinerama.so.0
+					libxcb-xkb.so.1
+					libxcb.so.1
+					libxkbcommon-x11.so.0
+					libxkbcommon.so.0
+			)
+			set(UNRESOLVED_QT_DEPS "")
+			foreach (REQUIREMENT ${BUNDLED_QT_REQUIREMENTS})
+				find_library(BUNDLED_QT_${REQUIREMENT} ${REQUIREMENT})
+				if (NOT BUNDLED_QT_${REQUIREMENT})
+					set(UNRESOLVED_QT_DEPS ${UNRESOLVED_QT_DEPS} ${REQUIREMENT})
+				endif()
+				unset(BUNDLED_QT_${REQUIREMENT})
+			endforeach()
+			unset(BUNDLED_QT_REQUIREMENTS)
+
+			if (NOT "${UNRESOLVED_QT_DEPS}" STREQUAL "")
+				message(FATAL_ERROR "Bundled Qt package missing required dependencies: ${UNRESOLVED_QT_DEPS}")
+			endif()
+
+			set(USE_BUNDLED_QT ON CACHE BOOL "Download bundled Qt" FORCE)
+		endif()
+		if (USE_BUNDLED_QT)
+			# Binary package currently does not support Qt webengine, so make sure it's disabled
+			set(USE_QT_WEB_ENGINE OFF CACHE BOOL "Use Qt Webengine" FORCE)
+		endif()
+	endif()
+
+	set(QT_NO_CMAKE_SYSTEM_PATH)
+
+	if(USE_BUNDLED_QT)
+		if ((MSVC_VERSION GREATER_EQUAL 1920 AND MSVC_VERSION LESS 1940) AND (ARCHITECTURE STREQUAL "x86_64"))
+			set(QT_BUILD qt-5.15.2-msvc2019_64)
+		elseif ((${CMAKE_SYSTEM_NAME} STREQUAL "Linux") AND NOT MINGW AND (ARCHITECTURE STREQUAL "x86_64"))
+			set(QT_BUILD qt5_5_15_2)
+		elseif ((${CMAKE_SYSTEM_NAME} STREQUAL "MacOS")) # I think this is the only check we need for MacOS?
+			set(QT_BUILD qt_error)
+		else()
+			message(FATAL_ERROR "No bundled Qt binaries for your toolchain. Disable USE_BUNDLED_QT and provide your own.")
+		endif()
+
+		if (DEFINED QT_BUILD)
+			# i think i need to add a check here for if we already have the libs dl'd
+			download_bundled_external("qt/" ${QT_BUILD} QT_PREFIX)
+		endif()
+
+		set(QT_PREFIX_HINT "${QT_PREFIX}" PARENT_SCOPE)
+
+		set(QT_NO_CMAKE_SYSTEM_PATH "NO_CMAKE_SYSTEM_PATH")
+		list(APPEND CMAKE_PREFIX_PATH "${QT_PREFIX}")
+		# Binary package for Qt5 has Qt Multimedia
+		set(USE_QT_MULTIMEDIA ON CACHE BOOL "Use Qt Multimedia" FORCE)
+	endif()
+
+	set_qt_components()
+	find_package(Qt5 ${QT5_VERSION} COMPONENTS ${QT_COMPONENTS} ${QT_PREFIX_HINT} ${QT_NO_CMAKE_SYSTEM_PATH})
+	include_directories(${Qt5_INCLUDE_DIR})
+	message(${Qt5_FOUND})
+	get_cmake_property(_variableNames VARIABLES)
+	list (SORT _variableNames)
+	foreach (_variableName ${_variableNames})
+		message(STATUS "${_variableName}=${${_variableName}}")
+	endforeach()
+endif()
+
 # Cubeb setup, from https://github.com/RPCS3/rpcs3/blob/master/3rdparty/cubeb/CMakeLists.txt
 set(BUILD_SHARED_LIBS FALSE CACHE BOOL "Don't build shared libs")
 set(BUILD_TESTS FALSE CACHE BOOL "Don't build tests")

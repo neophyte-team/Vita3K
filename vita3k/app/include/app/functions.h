@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include <QWindow>
+
 struct Config;
 struct EmuEnvState;
 struct SDL_Window;

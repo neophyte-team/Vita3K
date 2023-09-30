@@ -22,8 +22,10 @@
 #include <config/version.h>
 #include <display/state.h>
 #include <emuenv/state.h>
+
 #include <gui/functions.h>
 #include <gui/state.h>
+
 #include <io/state.h>
 #include <kernel/state.h>
 #include <modules/module_parent.h>
@@ -44,6 +46,14 @@
 #ifdef WIN32
 #include <combaseapi.h>
 #include <process.h>
+#endif
+
+#ifdef USE_QT_FRONTEND
+#include "gui-qt/src/main_window.h"
+#include <gui-qt/functions.h>
+#include <gui-qt/state.h>
+#include <QApplication>
+#include <QWidget>
 #endif
 
 #include <SDL.h>
@@ -83,7 +93,131 @@ static void run_execv(char *argv[], EmuEnvState &emuenv) {
 #endif
 };
 
+int qt_main(int argc, char *argv[]) {
+    QCoreApplication::setAttribute(Qt::AA_DisableWindowContextHelpButton);
+
+    QApplication app(argc, argv);
+
+    ZoneScoped; // Tracy - Track main function scope
+    Root root_paths;
+    app::init_paths(root_paths);
+
+    // Create default preference path for safety
+    if (!fs::exists(root_paths.get_pref_path()))
+        fs::create_directories(root_paths.get_pref_path());
+
+    if (logging::init(root_paths, true) != Success)
+        return InitConfigFailed;
+
+    bool adminPriv = false;
+#ifdef WIN32
+    // https://stackoverflow.com/questions/8046097/how-to-check-if-a-process-has-the-administrative-rights
+    HANDLE hToken = NULL;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
+        TOKEN_ELEVATION Elevation;
+        DWORD cbSize = sizeof(TOKEN_ELEVATION);
+        if (GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize)) {
+            adminPriv = Elevation.TokenIsElevated;
+        }
+    }
+    if (hToken) {
+        CloseHandle(hToken);
+    }
+#else
+    auto uid = getuid();
+    auto euid = geteuid();
+
+    // if either effective uid or uid is the one of the root user assume running as root.
+    // else if euid and uid are different then permissions errors can happen if its running
+    // as a completly different user than the uid/euid
+    if (uid == 0 || euid == 0 || uid != euid)
+        adminPriv = true;
+#endif
+
+    if (adminPriv) {
+        LOG_CRITICAL("PLEASE. DO NOT RUN VITA3K AS ADMIN OR WITH ADMIN PRIVILEGES.");
+    }
+
+    Config cfg{};
+    EmuEnvState emuenv;
+    if (const auto err = config::init_config(cfg, argc, argv, root_paths) != Success) {
+        if (err == QuitRequested) {
+            if (cfg.recompile_shader_path.has_value()) {
+                LOG_INFO("Recompiling {}", *cfg.recompile_shader_path);
+                shader::convert_gxp_to_glsl_from_filepath(*cfg.recompile_shader_path);
+            }
+            if (cfg.delete_title_id.has_value()) {
+                LOG_INFO("Deleting title id {}", *cfg.delete_title_id);
+                fs::remove_all(fs::path(cfg.pref_path) / "ux0/app" / *cfg.delete_title_id);
+                fs::remove_all(fs::path(cfg.pref_path) / "ux0/addcont" / *cfg.delete_title_id);
+                fs::remove_all(fs::path(cfg.pref_path) / "ux0/user/00/savedata" / *cfg.delete_title_id);
+                fs::remove_all(fs::path(root_paths.get_cache_path()) / "shaders" / *cfg.delete_title_id);
+            }
+            if (cfg.pkg_path.has_value() && cfg.pkg_zrif.has_value()) {
+                LOG_INFO("Installing pkg from {} ", *cfg.pkg_path);
+                emuenv.pref_path = string_utils::utf_to_wide(cfg.pref_path);
+                install_pkg(*cfg.pkg_path, emuenv, *cfg.pkg_zrif, [](float) {});
+                return Success;
+            }
+            return Success;
+        }
+        return InitConfigFailed;
+    }
+
+#ifdef WIN32
+    auto res = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    LOG_ERROR_IF(res == S_FALSE, "Failed to initialize COM Library");
+#endif
+
+    std::atexit(SDL_Quit);
+
+    // Enable HIDAPI rumble for DS4/DS
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
+
+    // Enable Switch controller
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
+
+    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+        app::error_dialog("SDL initialisation failed.");
+        return SDLInitFailed;
+    }
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+    LOG_INFO("{}", window_title);
+    LOG_INFO("Number of logical CPU cores: {}", SDL_GetCPUCount());
+    LOG_INFO("Available ram memory: {} MiB", SDL_GetSystemRAM());
+
+    if (!app::init(emuenv, cfg, root_paths)) {
+        //app::error_dialog("Emulated environment initialization failed.", emuenv.window.get());
+        return 1;
+    }
+
+    if (emuenv.cfg.controller_binds.empty() || (emuenv.cfg.controller_binds.size() != 15))
+        gui::reset_controller_binding(emuenv);
+
+    init_libraries(emuenv);
+
+    QtGuiState gui;
+    gui_qt::pre_init(gui, emuenv);
+
+    QPalette pal = QPalette();
+    pal.setColor(QPalette::Window, Qt::darkBlue);
+    QApplication::setPalette(pal);
+
+    MainWindow main_window{gui, emuenv};
+    return QApplication::exec();
+}
+
 int main(int argc, char *argv[]) {
+
+#ifdef USE_QT_FRONTEND
+
+    int ret = qt_main(argc, argv);
+
+#else
+
     ZoneScoped; // Tracy - Track main function scope
     Root root_paths;
 
@@ -466,6 +600,6 @@ int main(int argc, char *argv[]) {
 
     if (emuenv.load_exec)
         run_execv(argv, emuenv);
-
+#endif
     return Success;
 }

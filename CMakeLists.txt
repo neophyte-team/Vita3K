@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0)
 
+set(USE_QT_FRONTEND ON)
+
 option(USE_DISCORD_RICH_PRESENCE "Build Vita3K with Discord Rich Presence" ON)
 option(USE_VITA3K_UPDATE "Build Vita3K with updater." ON)
 
@@ -205,6 +207,10 @@ endif()
 
 if(WIN32)
 	add_definitions (/D "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" /D "_CRT_SECURE_NO_WARNINGS" /D "NOMINMAX")
+endif()
+
+if(USE_QT_FRONTEND)
+    add_definitions(-DUSE_QT_FRONTEND)
 endif()
 
 # Allow per-translation-unit parallel builds when using MSVC
