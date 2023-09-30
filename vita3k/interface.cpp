@@ -605,7 +605,9 @@ bool handle_events(EmuEnvState &emuenv, GuiState &gui) {
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+#ifndef USE_QT_FRONTEND
         ImGui_ImplSdl_ProcessEvent(gui.imgui_state.get(), &event);
+#endif
         switch (event.type) {
         case SDL_QUIT:
             if (!emuenv.io.app_path.empty())
@@ -619,8 +621,10 @@ bool handle_events(EmuEnvState &emuenv, GuiState &gui) {
             return false;
 
         case SDL_KEYDOWN: {
+#ifndef USE_QT_FRONTEND
             if (ImGui::GetIO().WantTextInput || gui.is_key_locked)
                 continue;
+#endif
 
             const auto get_sce_ctrl_btn_from_scancode = [&emuenv](const SDL_Scancode scancode) {
                 if (scancode == emuenv.cfg.keyboard_button_up)
@@ -662,11 +666,16 @@ bool handle_events(EmuEnvState &emuenv, GuiState &gui) {
                 gui.is_capturing_keys = false;
             }
             if (allow_switch_state) {
+#ifdef USE_QT_FRONTEND
+                if (sce_ctrl_btn & SCE_CTRL_PSBUTTON)
+                    switch_live_area_state(emuenv, gui);
+#else
                 // toggle gui state
                 if (event.key.keysym.scancode == emuenv.cfg.keyboard_gui_toggle_gui)
                     emuenv.display.imgui_render = !emuenv.display.imgui_render;
                 else if (sce_ctrl_btn & SCE_CTRL_PSBUTTON)
                     switch_live_area_state(emuenv, gui);
+#endif
             } else if (!gui::get_sys_apps_state(gui)) {
                 if (sce_ctrl_btn & SCE_CTRL_PSBUTTON)
                     gui::close_system_app(gui, emuenv);

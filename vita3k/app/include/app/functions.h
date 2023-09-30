@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include <QWindow>
+
 struct Config;
 struct EmuEnvState;
 struct SDL_Window;
@@ -47,5 +49,8 @@ void error_dialog(const std::string &message, SDL_Window *window = nullptr);
 
 void set_window_title(EmuEnvState &emuenv);
 void calculate_fps(EmuEnvState &emuenv);
+
+bool init_qt(EmuEnvState &state, Config &cfg, const Root &root_paths);
+void error_dialog_qt(const std::string &message, QWindow *window = nullptr);
 
 } // namespace app

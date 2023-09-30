@@ -117,6 +117,7 @@ add_subdirectory(display)
 add_subdirectory(features)
 add_subdirectory(glutil)
 add_subdirectory(gui)
+add_subdirectory(gui-qt)
 add_subdirectory(gxm)
 add_subdirectory(host)
 add_subdirectory(ime)
@@ -147,10 +148,15 @@ add_subdirectory(vkutil)
 
 add_executable(vita3k MACOSX_BUNDLE main.cpp interface.cpp interface.h performance.cpp)
 
-target_link_libraries(vita3k PRIVATE app config ctrl display gdbstub gui gxm io miniz modules packages renderer shader touch)
+target_link_libraries(vita3k PRIVATE app config ctrl display gdbstub gui gui-qt gxm io miniz modules packages renderer shader touch)
 if(USE_DISCORD_RICH_PRESENCE)
 	target_link_libraries(vita3k PRIVATE discord-rpc)
 endif()
+if(USE_QT_FRONTEND)
+	target_link_libraries(vita3k PRIVATE ${Qt5_LIBRARIES})
+	add_definitions(-DUSE_QT_FRONTEND)
+endif()
+
 
 set_target_properties(vita3k PROPERTIES OUTPUT_NAME Vita3K
 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
@@ -252,6 +258,24 @@ elseif(WIN32)
 		TARGET vita3k
 		POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_BINARY_DIR}/external/discord_game_sdk/lib/x86_64/discord_game_sdk.dll" "$<TARGET_FILE_DIR:vita3k>")
+	endif()
+	if(USE_QT_FRONTEND)
+		add_custom_command(
+			TARGET vita3k
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory "${QT_PREFIX_HINT}/bin" "$<TARGET_FILE_DIR:vita3k>"
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${QT_PREFIX_HINT}/plugins"
+			COMMAND ${CMAKE_COMMAND} -E copy_directory "${QT_PREFIX_HINT}/plugins" "$<TARGET_FILE_DIR:vita3k>/plugins"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/QtWebEngineProcessd.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/QtWebEngineProcess.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/qmake.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/moc.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/rcc.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/lupdate.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/uic.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/lrelease.exe"
+			COMMAND ${CMAKE_COMMAND} -E rm "$<TARGET_FILE_DIR:vita3k>/lconvert.exe"
+		)
 	endif()
 	if(EXISTS "${CMAKE_BINARY_DIR}/external/openssl")
 		add_custom_command(
