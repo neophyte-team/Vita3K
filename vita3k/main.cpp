@@ -221,14 +221,13 @@ int qt_main(int argc, char *argv[]) {
 
     if (!cfg.console) {
         gui_qt::pre_init(gui, emuenv);
-        main_window.resize(1280,720);
 
         if (!emuenv.cfg.initial_setup) {
             main_window.on_initial_setup();
         } else {
             gui_qt::init(gui, emuenv);
-            main_window.show();
             main_window.init_live_area();
+            main_window.show();
         }
     }
     return app.exec();
