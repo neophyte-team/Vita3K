@@ -3,7 +3,7 @@
 
 #include "emuenv/state.h"
 #include "gui/state.h"
-#include <config/state.h>
+#include "config/state.h"
 #include <QWizardPage>
 
 namespace Ui {

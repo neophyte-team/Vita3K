@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>InitialSetupWizard</class>
- <widget class="QWizard" name="InitialSetupWizard">
+ <class>LiveArea</class>
+ <widget class="QWidget" name="LiveArea">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,8 +11,13 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Wizard</string>
+   <string>Form</string>
   </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QStackedWidget" name="stack"/>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>
