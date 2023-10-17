@@ -1,9 +1,9 @@
 #include "install_firmware_page.h"
-#include "config/functions.h"
 #include "gui/functions.h"
 #include "ui_install_firmware_page.h"
 #include <host/dialog/filesystem.hpp>
 #include <packages/functions.h>
+#include <QProgressBar>
 
 #include <thread>
 
@@ -15,12 +15,15 @@ InstallFirmwarePage::InstallFirmwarePage(GuiState &gui_, EmuEnvState &emuenv_, Q
     gui{gui_},
     emuenv{emuenv_} {
     ui->setupUi(this);
+
+    ui->installed_firmware_status->setAttribute(Qt::WA_TransparentForMouseEvents);
+    ui->installed_firmware_status->setFocusPolicy(Qt::NoFocus);
+    ui->installed_fonts_status->setAttribute(Qt::WA_TransparentForMouseEvents);
+    ui->installed_fonts_status->setFocusPolicy(Qt::NoFocus);
 }
 
 void InstallFirmwarePage::on_install_firmware_file_button_clicked() {
     static std::mutex install_mutex;
-    static bool draw_file_dialog = true;
-    static bool finished_installing = false;
     static std::atomic<uint32_t> progress(0);
     static const auto progress_callback = [&](uint32_t updated_progress) {
         progress = updated_progress;
@@ -32,20 +35,24 @@ void InstallFirmwarePage::on_install_firmware_file_button_clicked() {
         std::thread installation([this]() {
             install_pup(emuenv.pref_path, pup_path.string(), progress_callback);
             std::lock_guard<std::mutex> lock(install_mutex);
-            finished_installing = true;
-            emuenv.cfg.initial_setup = true;
-            config::serialize_config(emuenv.cfg, emuenv.base_path);
+
+            //TODO: show progress dialog
+            LOG_ERROR("INSTALLED");
             gui::get_firmware_version(emuenv);
+            initializePage();
         });
         installation.detach();
-    } else if (result == host::dialog::filesystem::Result::CANCEL) {
-        gui.file_menu.firmware_install_dialog = false;
-        draw_file_dialog = true;
-    } else {
-        LOG_ERROR("Error initializing file dialog: {}", host::dialog::filesystem::get_error());
-        gui.file_menu.firmware_install_dialog = false;
-        draw_file_dialog = true;
     }
+}
+
+void InstallFirmwarePage::initializePage() {
+    const auto FW_PATH{ fs::path(emuenv.pref_path) / "vs0" };
+    const auto FW_FONT_PATH{ fs::path(emuenv.pref_path) / "sa0" };
+    const auto FW_INSTALLED = fs::exists(FW_PATH) && !fs::is_empty(FW_PATH);
+    const auto FW_FONT_INSTALLED = fs::exists(FW_FONT_PATH) && !fs::is_empty(FW_FONT_PATH);
+
+    ui->installed_firmware_status->setChecked(FW_INSTALLED);
+    ui->installed_fonts_status->setChecked(FW_FONT_INSTALLED);
 }
 
 void InstallFirmwarePage::on_download_firmware_button_clicked() {

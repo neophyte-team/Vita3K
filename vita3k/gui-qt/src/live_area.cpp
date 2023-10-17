@@ -1,7 +1,23 @@
 #include "live_area.h"
-#include "QHeaderView"
-#include "QAbstractProxyModel"
-#include "ui_live_area.h"
+#include <QHeaderView>
+#include <QAbstractProxyModel>
+#include <ui_live_area.h>
+#include "models/app_list_model.h"
+
+static const auto table_view_styles = QString(
+    "QHeaderView::section {"
+    "   background-color: black;"
+    "   color: yellow;"
+    "   border: 1px solid #6c6c6c;"
+    "}"
+    "QHeaderView::down-arrow, QHeaderView::up-arrow {"
+    "   subcontrol-position: right;"
+    "   width: 10px;"
+    "   height: 10px;"
+    "   background: white;"
+    "}"
+);
+// TODO: fix arrows or add custom arrows
 
 LiveArea::LiveArea(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     QWidget(parent),
@@ -15,26 +31,45 @@ LiveArea::LiveArea(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
 }
 
 void LiveArea::initialize() {
+    ui->setupUi(this);
+
+    init_table_view();
+
+    connect(table_view->selectionModel(), &QItemSelectionModel::currentChanged, this, &LiveArea::onSelectionModelCurrentChanged);
+    connect(table_view, &QTableView::customContextMenuRequested, this, &LiveArea::onTableViewHeaderContextMenuRequested);
+    connect(table_view->horizontalHeader(), &QHeaderView::customContextMenuRequested, this, &LiveArea::onTableViewHeaderContextMenuRequested);
+}
+
+void LiveArea::init_table_view() {
     model = new AppListModel(gui, emuenv, app_selector, this);
     sort_model = new AppListSortModel(model);
     sort_model->setSourceModel(model);
-    ui->setupUi(this);
 
     table_view = new QTableView(ui->stack);
     table_view->setModel(sort_model);
-    table_view->setBaseSize(this->size());
     table_view->setSortingEnabled(true);
+    table_view->verticalHeader()->setDefaultSectionSize(85);
     table_view->setSelectionMode(QAbstractItemView::SingleSelection);
     table_view->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_view->setContextMenuPolicy(Qt::CustomContextMenu);
-    table_view->setAlternatingRowColors(true);
+    table_view->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
     table_view->setShowGrid(true);
-    table_view->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     table_view->setCurrentIndex({});
-    table_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    table_view->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     table_view->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
+    table_view->verticalHeader()->hide();
 
-    connect(table_view->selectionModel(), &QItemSelectionModel::currentChanged, this, &LiveArea::onSelectionModelCurrentChanged);
+    // TODO: find the way to center all items (why it's not centered after changing section resize mode?)
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_ICON, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_COMP, QHeaderView::ResizeToContents);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_TITLE_ID, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_VER, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_CAT, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_LAST_TIME, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_NAME, QHeaderView::Stretch);
+
+    table_view->setStyleSheet("background-color: transparent;");
+    setStyleSheet(table_view_styles);
 
     ui->stack->insertWidget(0, table_view);
 }
@@ -64,6 +99,10 @@ void LiveArea::onSelectionModelCurrentChanged(const QModelIndex& current, const 
         return;
 
     emit selection_changed();
+}
+
+void LiveArea::onTableViewHeaderContextMenuRequested(const QPoint& point) {
+    // TODO: implement it
 }
 
 LiveArea::~LiveArea() {

@@ -182,6 +182,10 @@ if(WIN32)
 	add_definitions (/D "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" /D "_CRT_SECURE_NO_WARNINGS" /D "NOMINMAX")
 endif()
 
+if(USE_QT_FRONTEND)
+    add_definitions(-DUSE_QT_FRONTEND)
+endif()
+
 # Allow per-translation-unit parallel builds when using MSVC
 if(CMAKE_GENERATOR MATCHES "Visual Studio" AND (CMAKE_C_COMPILER_ID MATCHES "MSVC|Intel|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "MSVC|Intel|Clang"))
 	string(APPEND CMAKE_C_FLAGS " /MP")

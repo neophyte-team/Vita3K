@@ -15,7 +15,6 @@
 // with this program; if not, write to the Free Software Foundation, Inc.,
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-#include "gui-qt/src/main_window.h"
 #include "interface.h"
 
 #include <app/functions.h>
@@ -26,11 +25,6 @@
 
 #include <gui/functions.h>
 #include <gui/state.h>
-
-#include <gui-qt/functions.h>
-#include <gui-qt/state.h>
-#include <QApplication>
-#include <QWidget>
 
 #include <io/state.h>
 #include <kernel/state.h>
@@ -52,6 +46,14 @@
 #ifdef WIN32
 #include <combaseapi.h>
 #include <process.h>
+#endif
+
+#ifdef USE_QT_FRONTEND
+#include "gui-qt/src/main_window.h"
+#include <gui-qt/functions.h>
+#include <gui-qt/state.h>
+#include <QApplication>
+#include <QWidget>
 #endif
 
 #include <SDL.h>
@@ -168,47 +170,30 @@ int qt_main(int argc, char *argv[]) {
     LOG_ERROR_IF(res == S_FALSE, "Failed to initialize COM Library");
 #endif
 
-    if (cfg.console) {
-        cfg.show_gui = false;
-        if (logging::init(root_paths, false) != Success)
-            return InitConfigFailed;
-    } else {
-        std::atexit(SDL_Quit);
+    std::atexit(SDL_Quit);
 
-        // Enable HIDAPI rumble for DS4/DS
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
+    // Enable HIDAPI rumble for DS4/DS
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
 
-        // Enable Switch controller
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
+    // Enable Switch controller
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
 
-        if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-            app::error_dialog("SDL initialisation failed.");
-            return SDLInitFailed;
-        }
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+        app::error_dialog("SDL initialisation failed.");
+        return SDLInitFailed;
     }
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     LOG_INFO("{}", window_title);
     LOG_INFO("Number of logical CPU cores: {}", SDL_GetCPUCount());
     LOG_INFO("Available ram memory: {} MiB", SDL_GetSystemRAM());
 
-    app::AppRunType run_type = app::AppRunType::Unknown;
-    if (cfg.run_app_path)
-        run_type = app::AppRunType::Extracted;
-
-#ifdef USE_QT_FRONTEND
-    if (!app::init_qt(emuenv, cfg, root_paths)) {
+    if (!app::init(emuenv, cfg, root_paths)) {
         //app::error_dialog("Emulated environment initialization failed.", emuenv.window.get());
         return 1;
     }
-#else
-    if (!app::init(emuenv, cfg, root_paths)) {
-        app::error_dialog("Emulated environment initialization failed.", emuenv.window.get());
-        return 1;
-    }
-#endif
 
     if (emuenv.cfg.controller_binds.empty() || (emuenv.cfg.controller_binds.size() != 15))
         gui::reset_controller_binding(emuenv);
@@ -216,22 +201,14 @@ int qt_main(int argc, char *argv[]) {
     init_libraries(emuenv);
 
     QtGuiState gui;
+    gui_qt::pre_init(gui, emuenv);
+
+    QPalette pal = QPalette();
+    pal.setColor(QPalette::Window, Qt::darkBlue);
+    QApplication::setPalette(pal);
 
     MainWindow main_window{gui, emuenv};
-
-    if (!cfg.console) {
-        gui_qt::pre_init(gui, emuenv);
-        main_window.resize(1280,720);
-
-        if (!emuenv.cfg.initial_setup) {
-            main_window.on_initial_setup();
-        } else {
-            gui_qt::init(gui, emuenv);
-            main_window.show();
-            main_window.init_live_area();
-        }
-    }
-    return app.exec();
+    return QApplication::exec();
 }
 
 int main(int argc, char *argv[]) {

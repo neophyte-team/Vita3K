@@ -36,4 +36,4 @@ target_link_libraries(gui-qt PUBLIC app compat config dialog emuenv https ime im
 target_link_libraries(gui-qt PRIVATE audio ctrl io kernel miniz psvpfsparser pugixml::pugixml stb renderer packages sdl2 touch vkutil host::dialog)
 target_link_libraries(gui-qt PUBLIC tracy)
 target_link_libraries(gui-qt PUBLIC vulkan)
-target_link_libraries(gui-qt PUBLIC Qt5::Core Qt5::Widgets Qt5::Gui)
+target_link_libraries(gui-qt PUBLIC Qt5::Core Qt5::Widgets)

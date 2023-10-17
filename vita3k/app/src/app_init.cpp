@@ -127,6 +127,7 @@ bool init(EmuEnvState &state, Config &cfg, const Root &root_paths) {
 #endif
     }
 
+#ifndef USE_QT_FRONTEND
     int window_type = 0;
     switch (state.backend_renderer) {
     case renderer::Backend::OpenGL:
@@ -198,6 +199,7 @@ bool init(EmuEnvState &state, Config &cfg, const Root &root_paths) {
             return false;
         }
     }
+#endif
 
     if (!init(state.io, state.base_path, state.pref_path, state.cfg.console)) {
         LOG_ERROR("Failed to initialize file system for the emulator!");

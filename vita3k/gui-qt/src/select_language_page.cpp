@@ -23,7 +23,6 @@ SelectLanguagePage::SelectLanguagePage(GuiState &gui_, EmuEnvState &emuenv_, QWi
 }
 
 bool SelectLanguagePage::validatePage() {
-    LOG_ERROR("{}", ui->language_list->currentItem()->data(1).toString().toStdString());
     emuenv.cfg.sys_lang = ui->language_list->currentItem()->data(1).toInt();
     lang::init_lang(gui.lang, emuenv);
     return true;

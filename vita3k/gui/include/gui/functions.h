@@ -36,7 +36,7 @@ enum GenericDialogState {
     CANCEL_STATE
 };
 
-void get_firmware_version(EmuEnvState &emuenv);
+static void get_firmware_version(EmuEnvState &emuenv);
 void browse_home_apps_list(GuiState &gui, EmuEnvState &emuenv, const uint32_t button);
 void browse_live_area_apps_list(GuiState &gui, EmuEnvState &emuenv, const uint32_t button);
 void browse_pages_manual(GuiState &gui, EmuEnvState &emuenv, const uint32_t button);

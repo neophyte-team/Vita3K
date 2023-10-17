@@ -1,9 +1,9 @@
 #ifndef INSTALL_FIRMWARE_PAGE_H
 #define INSTALL_FIRMWARE_PAGE_H
 
-#include "emuenv/state.h"
-#include "gui/state.h"
-#include "config/state.h"
+#include <emuenv/state.h>
+#include <gui/state.h>
+#include <config/state.h>
 #include <QWizardPage>
 
 namespace Ui {
@@ -27,6 +27,8 @@ private:
 
     GuiState &gui;
     EmuEnvState &emuenv;
+
+    void initializePage() override;
 };
 
 #endif // INSTALL_FIRMWARE_PAGE_H

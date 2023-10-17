@@ -1,6 +1,8 @@
 #include "render_window.h"
-#include "QHBoxLayout"
+#include <QHBoxLayout>
+#include <QOpenGLContext>
 #include <emuenv/state.h>
+#include <renderer/functions.h>
 #include <renderer/state.h>
 
 RenderWindow::RenderWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
@@ -25,6 +27,7 @@ bool RenderWindow::init_render_target() {
         initialize_vulkan();
         break;
     }
+
     layout()->addWidget(child_widget);
     return true;
 }
@@ -33,6 +36,9 @@ bool RenderWindow::initialize_gl() {
     auto child = new OpenGLRenderWidget(this);
     child_widget = child;
     child_widget->windowHandle()->create();
+
+    auto context = new QOpenGLContext(child_widget);
+    context->create();
     return true;
 }
 

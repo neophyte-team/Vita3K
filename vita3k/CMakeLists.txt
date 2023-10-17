@@ -154,7 +154,6 @@ if(USE_DISCORD_RICH_PRESENCE)
 endif()
 if(USE_QT_FRONTEND)
 	target_link_libraries(vita3k PRIVATE ${Qt5_LIBRARIES})
-	add_definitions(-DUSE_QT_FRONTEND)
 endif()
 
 

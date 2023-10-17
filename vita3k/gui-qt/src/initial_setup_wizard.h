@@ -1,5 +1,6 @@
-#include "emuenv/state.h"
-#include "gui/state.h"
+#include <emuenv/state.h>
+#include <gui/state.h>
+#include "main_window.h"
 #include <QWizard>
 
 namespace Ui {
@@ -13,8 +14,13 @@ public:
     explicit InitialSetupWizard(GuiState &gui, EmuEnvState &emuenv, QWidget *parent = nullptr);
     ~InitialSetupWizard();
 
-    void accept() override;
+    void accept();
 
 private:
     Ui::InitialSetupWizard *ui;
+
+    MainWindow *main_window;
+
+    GuiState &gui;
+    EmuEnvState &emuenv;
 };

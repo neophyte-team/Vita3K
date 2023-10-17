@@ -32,9 +32,12 @@ private:
 
     RenderWindow *render_window;
 
+    QDialog *pkg_installation_dialog;
+
     void connect_widget_events();
     void start_pkg_installation();
     void on_licence_button();
+    void on_zrif_button();
     void on_app_selection_changed();
 
 };

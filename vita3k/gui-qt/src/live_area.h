@@ -35,11 +35,15 @@ public:
     void initialize();
     gui::App *get_selected_app();
 
+private:
+    void init_table_view();
+
 signals:
     void selection_changed();
 
 private slots:
     void onSelectionModelCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+    void onTableViewHeaderContextMenuRequested(const QPoint& point);
 
 private:
     Ui::LiveArea *ui;
