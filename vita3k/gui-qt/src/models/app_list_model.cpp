@@ -7,13 +7,12 @@
 #include <QColorSpace>
 #include <QPainter>
 #include <utility>
-#include <algorithm>
 
-AppListModel::AppListModel(GuiState &gui_, EmuEnvState &emuenv_, std::vector<gui::App> app_selector_, QObject *parent)
+AppListModel::AppListModel(GuiState &gui_, EmuEnvState &emuenv_, QObject *parent)
     : QAbstractTableModel(parent),
     gui{gui_},
-    emuenv{emuenv_},
-    app_selector{std::move(app_selector_)} {
+    emuenv{emuenv_} {
+    refresh_app_list();
 
     set_column_display_names();
 }
@@ -97,10 +96,22 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
         }
     case Qt::TextAlignmentRole:
         return Qt::AlignCenter;
-    case Qt::ForegroundRole:
-        return QColor(Qt::white);
     }
     return {};
+}
+
+void AppListModel::refresh() {
+    beginResetModel();
+    refresh_app_list();
+    endResetModel();
+}
+
+void AppListModel::refresh_app_list() {
+    app_selector.clear();
+    for (auto &app : gui.app_selector.sys_apps)
+        app_selector.emplace_back(app);
+    for (auto &app : gui.app_selector.user_apps)
+        app_selector.emplace_back(app);
 }
 
 void AppListModel::set_column_display_names() {

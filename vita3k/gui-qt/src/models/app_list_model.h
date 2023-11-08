@@ -35,7 +35,7 @@ public:
         { compat::PLAYABLE, QColor(14, 138, 22) }, // #0e8a16
     };
 
-    explicit AppListModel(GuiState &gui, EmuEnvState &emuenv, std::vector<gui::App> app_selector, QObject *parent = nullptr);
+    explicit AppListModel(GuiState &gui, EmuEnvState &emuenv, QObject *parent = nullptr);
 
     // Header:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -45,6 +45,9 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    void refresh();
+    void refresh_app_list();
 
 private:
     GuiState &gui;

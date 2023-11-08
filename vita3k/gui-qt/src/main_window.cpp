@@ -1,47 +1,29 @@
 #include "main_window.h"
-#include <config/version.h>
-#include "initial_setup_wizard.h"
-#include "packages/pkg.h"
-#include "rif2zrif.h"
+#include "src/initial-setup/initial_setup_wizard.h"
+#include "src/configuration/settings_window.h"
+#include "src/user_management_dialog.h"
 #include "ui_main_window.h"
-#include "util/string_utils.h"
 #include <QHBoxLayout>
+#include <QProgressDialog>
+#include <QInputDialog>
 #include <QLabel>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QThread>
+#include <config/version.h>
 #include <gui-qt/functions.h>
+#include <packages/functions.h>
 #include <gui/functions.h>
+#include <packages/pkg.h>
+#include <rif2zrif.h>
 #include <gui/state.h>
 #include <host/dialog/filesystem.hpp>
 #include <io/state.h>
-#include <packages/pkg.h>
 #include <packages/sfo.h>
 
 static std::filesystem::path pkg_path = "";
 static std::filesystem::path license_path = "";
 static std::string zRIF;
-
-static const auto menu_bar_styles = QString(
-    "QMenuBar {"
-    "   background-color: black;"
-    "}"
-    "QMenuBar::item {"
-    "   color: rgb(242, 150, 58);"
-    "}"
-    "QMenuBar::item:selected {"
-    "   background-color: yellow;"
-    "}"
-    "QMenu {"
-    "   background-color: black;"
-    "}"
-    "QMenu::item {"
-    "   color: rgb(242, 150, 58);"
-    "}"
-    "QMenu::item:selected {"
-    "   background-color: yellow;"
-    "}"
-    );
 
 MainWindow::MainWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     QMainWindow(parent),
@@ -50,11 +32,6 @@ MainWindow::MainWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     emuenv{emuenv_} {
     ui->setupUi(this);
 
-    ui->menubar->setStyleSheet(menu_bar_styles);
-
-    const auto default_icon{ emuenv.shared_path / "data/image/icon.png" };
-    this->resize(1280,720);
-    this->setWindowIcon(QIcon(QString::fromStdString(default_icon.string())));
     this->setWindowTitle(QString::fromStdString(window_title));
 
     if (!emuenv.cfg.initial_setup) {
@@ -74,10 +51,14 @@ void MainWindow::init_live_area() {
     setCentralWidget(live_area);
 
     connect(live_area, &LiveArea::selection_changed, this, &MainWindow::on_app_selection_changed, Qt::QueuedConnection);
+
+    if (!emuenv.cfg.auto_user_login) {
+        auto user_management_dialog = new UserManagementDialog(gui, emuenv, this);
+        user_management_dialog->exec();
+    }
 }
 void MainWindow::on_initial_setup() {
     auto *initial_setup_wizard = new InitialSetupWizard(gui, emuenv, this);
-    initial_setup_wizard->setPalette(this->palette());
     initial_setup_wizard->show();
     this->close();
 }
@@ -143,6 +124,16 @@ void MainWindow::on_actionInstall_pkg_triggered() {
     }
 }
 
+void MainWindow::on_actionSettings_triggered() {
+    auto settings_window = new SettingsWindow(gui, emuenv);
+    settings_window->show();
+}
+
+void MainWindow::on_actionUser_Management_triggered() {
+    auto user_management_dialog = new UserManagementDialog(gui, emuenv, this);
+    user_management_dialog->exec();
+}
+
 void MainWindow::on_licence_button() {
     host::dialog::filesystem::Result result = host::dialog::filesystem::Result::CANCEL;
     result = host::dialog::filesystem::open_file(license_path, { { "PlayStation Vita software license file", { "bin", "rif" } } });
@@ -155,27 +146,43 @@ void MainWindow::on_licence_button() {
 }
 
 void MainWindow::on_zrif_button() {
+    bool result;
+    zRIF = QInputDialog::getText(this, tr("Enter zRIF key"),
+        tr("Please input your zRIF here:"), QLineEdit::Normal,
+        "", &result).toStdString();
 
+    if (result && !zRIF.empty())
+        start_pkg_installation();
 }
 
 void MainWindow::start_pkg_installation() {
     static std::mutex install_mutex;
-    static const auto progress_callback = [&](float updated_progress) {
-
-    };
+    auto progress_dialog = new QProgressDialog(this);
+    progress_dialog->setWindowTitle("Application Installation");
+    progress_dialog->setModal(true);
+    progress_dialog->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+    progress_dialog->setCancelButton(nullptr);
 
     std::lock_guard<std::mutex> lock(install_mutex);
-    std::thread installation([this]() {
+    std::thread installation([this, &progress_dialog]() {
+        auto progress_callback = [&](float updated_progress) {
+            QMetaObject::invokeMethod(progress_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, static_cast<int>(updated_progress)));
+        };
         if (install_pkg(pkg_path.string(), emuenv, zRIF, progress_callback)) {
             std::lock_guard<std::mutex> lock(install_mutex);
 
-            //TODO: show progress dialog
-            LOG_ERROR("INSTALLED");
-            //TODO: refresh app list
+            if ((emuenv.app_info.app_category.find("gd") != std::string::npos) || (emuenv.app_info.app_category.find("gp") != std::string::npos)) {
+                gui_qt::init_user_app(gui, emuenv, emuenv.app_info.app_title_id);
+                gui::save_apps_cache(gui, emuenv);
+            }
+
+            live_area->refresh_app_list();
+            pkg_installation_dialog->close();
         }
         zRIF.clear();
     });
     installation.detach();
+    progress_dialog->exec();
 }
 
 MainWindow::~MainWindow() {

@@ -8,24 +8,26 @@ add_library(
         STATIC
         include/gui-qt/functions.h
         include/gui-qt/state.h
-        src/gui_qt.cpp
+        src/gui.cpp
+        src/user_management.cpp
 
-        src/main_window.h
-        src/render_window.h
-        src/initial_setup_wizard.h
-        src/select_language_page.h
-        src/select_pref_path_page.h
-        src/install_firmware_page.h
-        src/live_area.h
+        src/initial-setup/initial_setup_wizard.cpp
+
+        src/configuration/settings_window.cpp
+        src/configuration/base_settings_widget.cpp
+        src/configuration/core_settings_widget.cpp
+        src/configuration/cpu_settings_widget.cpp
+        src/configuration/gpu_settings_widget.cpp
+        src/configuration/system_settings_widget.cpp
+        src/configuration/emulator_settings_widget.cpp
+        src/configuration/network_settings_widget.cpp
+        src/configuration/debug_settings_widget.cpp
+
         src/main_window.cpp
         src/render_window.cpp
-        src/initial_setup_wizard.cpp
-        src/select_language_page.cpp
-        src/select_pref_path_page.cpp
-        src/install_firmware_page.cpp
         src/live_area.cpp
+        src/user_management_dialog.cpp
 
-        src/models/app_list_model.h
         src/models/app_list_model.cpp
         # list files whenever we begin to add them
 )

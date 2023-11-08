@@ -53,7 +53,6 @@
 #include <gui-qt/functions.h>
 #include <gui-qt/state.h>
 #include <QApplication>
-#include <QWidget>
 #endif
 
 #include <SDL.h>
@@ -93,7 +92,8 @@ static void run_execv(char *argv[], EmuEnvState &emuenv) {
 #endif
 };
 
-int qt_main(int argc, char *argv[]) {
+#ifdef USE_QT_FRONTEND
+int main(int argc, char *argv[]) {
     QCoreApplication::setAttribute(Qt::AA_DisableWindowContextHelpButton);
 
     QApplication app(argc, argv);
@@ -169,27 +169,12 @@ int qt_main(int argc, char *argv[]) {
     LOG_ERROR_IF(res == S_FALSE, "Failed to initialize COM Library");
 #endif
 
-    std::atexit(SDL_Quit);
-
-    // Enable HIDAPI rumble for DS4/DS
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
-
-    // Enable Switch controller
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
-
-    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-        app::error_dialog("SDL initialisation failed.");
-        return SDLInitFailed;
-    }
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
     LOG_INFO("{}", window_title);
     LOG_INFO("Number of logical CPU cores: {}", SDL_GetCPUCount());
     LOG_INFO("Available ram memory: {} MiB", SDL_GetSystemRAM());
 
     if (!app::init(emuenv, cfg, root_paths)) {
+        //TODO: think about error_dialog implementation
         //app::error_dialog("Emulated environment initialization failed.", emuenv.window.get());
         return 1;
     }
@@ -201,23 +186,18 @@ int qt_main(int argc, char *argv[]) {
 
     QtGuiState gui;
     gui_qt::pre_init(gui, emuenv);
+    gui::set_config(gui, emuenv, emuenv.io.app_path);
 
-    QPalette pal = QPalette();
-    pal.setColor(QPalette::Window, Qt::darkBlue);
-    QApplication::setPalette(pal);
+    const auto default_icon{ emuenv.shared_path / "data/image/icon.png" };
+    QApplication::setWindowIcon(QIcon(QString::fromStdString(default_icon.string())));
+    QApplication::setStyle("fusion");
+    //TODO: add other styles, like dark theme (check other emulators)
 
     MainWindow main_window{gui, emuenv};
     return QApplication::exec();
 }
-
+#elif
 int main(int argc, char *argv[]) {
-
-#ifdef USE_QT_FRONTEND
-
-    int ret = qt_main(argc, argv);
-
-#else
-
     ZoneScoped; // Tracy - Track main function scope
     Root root_paths;
 
@@ -600,6 +580,7 @@ int main(int argc, char *argv[]) {
 
     if (emuenv.load_exec)
         run_execv(argv, emuenv);
-#endif
+
     return Success;
 }
+#endif

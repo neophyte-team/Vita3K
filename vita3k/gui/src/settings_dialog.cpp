@@ -413,6 +413,8 @@ void set_config(GuiState &gui, EmuEnvState &emuenv, const std::string &app_path)
         return;
     }
 
+    //TODO: remove it when renderer is ready to be configured
+#ifndef USE_QT_FRONTEND
     // can be changed while ingame
     emuenv.renderer->set_surface_sync_state(emuenv.cfg.current_config.disable_surface_sync);
     emuenv.renderer->set_screen_filter(emuenv.cfg.current_config.screen_filter);
@@ -423,6 +425,7 @@ void set_config(GuiState &gui, EmuEnvState &emuenv, const std::string &app_path)
     emuenv.renderer->set_anisotropic_filtering(emuenv.cfg.current_config.anisotropic_filtering);
     emuenv.renderer->set_stretch_display(emuenv.cfg.stretch_the_display_area);
     emuenv.renderer->set_texture_state(emuenv.cfg.current_config.import_textures, emuenv.cfg.current_config.export_textures, emuenv.cfg.current_config.export_as_png);
+#endif
 
     // No change it if app already running
     if (emuenv.io.title_id.empty()) {
