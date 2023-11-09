@@ -33,6 +33,7 @@ public:
     ~LiveArea();
 
     void initialize();
+    void refresh_app_list();
     gui::App *get_selected_app();
 
 private:

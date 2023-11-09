@@ -4,21 +4,6 @@
 #include <ui_live_area.h>
 #include "models/app_list_model.h"
 
-static const auto table_view_styles = QString(
-    "QHeaderView::section {"
-    "   background-color: black;"
-    "   color: yellow;"
-    "   border: 1px solid #6c6c6c;"
-    "}"
-    "QHeaderView::down-arrow, QHeaderView::up-arrow {"
-    "   subcontrol-position: right;"
-    "   width: 10px;"
-    "   height: 10px;"
-    "   background: white;"
-    "}"
-);
-// TODO: fix arrows or add custom arrows
-
 LiveArea::LiveArea(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::LiveArea),
@@ -41,7 +26,7 @@ void LiveArea::initialize() {
 }
 
 void LiveArea::init_table_view() {
-    model = new AppListModel(gui, emuenv, app_selector, this);
+    model = new AppListModel(gui, emuenv, this);
     sort_model = new AppListSortModel(model);
     sort_model->setSourceModel(model);
 
@@ -67,9 +52,6 @@ void LiveArea::init_table_view() {
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_CAT, QHeaderView::Fixed);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_LAST_TIME, QHeaderView::Fixed);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_NAME, QHeaderView::Stretch);
-
-    table_view->setStyleSheet("background-color: transparent;");
-    setStyleSheet(table_view_styles);
 
     ui->stack->insertWidget(0, table_view);
 }
@@ -99,6 +81,10 @@ void LiveArea::onSelectionModelCurrentChanged(const QModelIndex& current, const 
         return;
 
     emit selection_changed();
+}
+
+void LiveArea::refresh_app_list() {
+    model->refresh();
 }
 
 void LiveArea::onTableViewHeaderContextMenuRequested(const QPoint& point) {

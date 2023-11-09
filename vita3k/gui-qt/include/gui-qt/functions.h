@@ -18,12 +18,25 @@
 #pragma once
 
 #include <gui/state.h>
+#include <config/state.h>
 
 namespace gui_qt {
 
 void pre_init(GuiState &gui, EmuEnvState &emuenv);
 void init(GuiState &gui, EmuEnvState &emuenv);
+void init_user_app(GuiState &gui, EmuEnvState &emuenv, const std::string &app_path);
 void init_home(GuiState &gui, EmuEnvState &emuenv);
 void draw_initial_setup(GuiState &gui, EmuEnvState &emuenv);
 
+User create_temp_user(GuiState &gui, EmuEnvState &emuenv);
+void get_users_list(GuiState &gui, EmuEnvState &emuenv);
+void save_user(GuiState &gui, EmuEnvState &emuenv, const User &user);
+void delete_user(GuiState &gui, EmuEnvState &emuenv, const User &user);
+void select_user(GuiState &gui, EmuEnvState &emuenv, const User &user);
+void init_user(GuiState &gui, EmuEnvState &emuenv, const User &user);
+
+void save_config(GuiState &gui, EmuEnvState &emuenv, Config::CurrentConfig config);
+
+void change_emulator_path(GuiState &gui, EmuEnvState &emuenv);
+void reset_emulator(GuiState &gui, EmuEnvState &emuenv);
 }

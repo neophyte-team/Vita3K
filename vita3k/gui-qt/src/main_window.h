@@ -22,6 +22,8 @@ public:
 
 private slots:
     void on_actionInstall_pkg_triggered();
+    void on_actionSettings_triggered();
+    void on_actionUser_Management_triggered();
 
 private:
     Ui::MainWindow *ui;
