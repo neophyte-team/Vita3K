@@ -1,6 +1,5 @@
 #include "settings_window.h"
 #include "ui_settings_window.h"
-#include <config/functions.h>
 #include <gui/functions.h>
 #include <gui-qt/functions.h>
 #include <io/state.h>
@@ -12,7 +11,8 @@ SettingsWindow::SettingsWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *pa
     emuenv{emuenv_} {
     ui->setupUi(this);
 
-    this->setWindowTitle(QString("Settings"));
+    setFixedSize(width(), height());
+    setWindowTitle(QString("Settings"));
 
     addWidget(core_settings = new CoreSettingsWidget(gui, emuenv, ui->settings_container), QString("Core"));
     addWidget(cpu_settings = new CpuSettingsWidget(gui, emuenv, ui->settings_container), QString("CPU"));

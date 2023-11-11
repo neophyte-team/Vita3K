@@ -3,6 +3,11 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+set(QT_RESOURCES
+        src/qdarkstyle/dark/darkstyle.qrc
+        src/qdarkstyle/light/lightstyle.qrc
+)
+
 add_library(
         gui-qt
         STATIC
@@ -10,6 +15,8 @@ add_library(
         include/gui-qt/state.h
         src/gui.cpp
         src/user_management.cpp
+
+        ${QT_RESOURCES}
 
         src/initial-setup/initial_setup_wizard.cpp
 

@@ -27,6 +27,7 @@
 #include <QVulkanInstance>
 #include <QVulkanWindow>
 #include <QWindow>
+#include <QMessageBox>
 
 namespace gui_qt {
 
@@ -88,6 +89,10 @@ static bool get_user_apps(GuiState &gui, EmuEnvState &emuenv) {
     }
 
     return !gui.app_selector.user_apps.empty();
+}
+
+void error(const std::string &message) {
+    QMessageBox::critical(nullptr, "Error", QString::fromStdString(message));
 }
 
 void pre_init(GuiState &gui, EmuEnvState &emuenv) {

@@ -65,17 +65,15 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
             auto icon_path = fs::path(emuenv.pref_path) / "ux0/app" / entry.path / "sce_sys/icon0.png";
             if (fs::exists(icon_path)) {
                 icon.load(QString::fromStdString(icon_path.string()));
-                return icon;
+            } else {
+                icon_path = fs::path(emuenv.base_path) / "data/image/icon.png";
+                if (fs::exists(icon_path))
+                    icon.load(QString::fromStdString(icon_path.string()));
             }
-
-            icon_path = fs::path(emuenv.base_path) / "data/image/icon.png";
-            if (fs::exists(icon_path)) {
-                icon.load(QString::fromStdString(icon_path.string()));
-                return icon;
-            }
+            icon = icon.scaled(64, 64, Qt::KeepAspectRatio);
 
             //TODO: find the way of rendering icon without getting libpng warning: iCCP: known incorrect sRGB profile
-            return {};
+            return icon;
         }
         case COLUMN_COMP: {
             if (index.row() >= gui.app_selector.sys_apps.size()) {
@@ -96,8 +94,9 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
         }
     case Qt::TextAlignmentRole:
         return Qt::AlignCenter;
+    default:
+        return {};
     }
-    return {};
 }
 
 void AppListModel::refresh() {
