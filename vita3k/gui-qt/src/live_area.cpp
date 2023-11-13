@@ -38,14 +38,14 @@ void LiveArea::init_table_view() {
     table_view->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_view->setContextMenuPolicy(Qt::CustomContextMenu);
     table_view->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-    table_view->setShowGrid(true);
+    table_view->setShowGrid(false);
     table_view->setCurrentIndex({});
     table_view->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     table_view->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
     table_view->verticalHeader()->hide();
 
     // TODO: find the way to center all items (why it's not centered after changing section resize mode?)
-    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_ICON, QHeaderView::Fixed);
+    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_ICON, QHeaderView::ResizeToContents);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_COMP, QHeaderView::ResizeToContents);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_TITLE_ID, QHeaderView::Fixed);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_VER, QHeaderView::Fixed);
@@ -73,6 +73,8 @@ gui::App* LiveArea::get_selected_app() {
 
         return &app_selector[source_index.row()];
     }
+
+    return nullptr;
 }
 
 void LiveArea::onSelectionModelCurrentChanged(const QModelIndex& current, const QModelIndex& previous) {

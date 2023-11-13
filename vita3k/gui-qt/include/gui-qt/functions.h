@@ -21,6 +21,7 @@
 #include <config/state.h>
 
 namespace gui_qt {
+void error(const std::string &message);
 
 void pre_init(GuiState &gui, EmuEnvState &emuenv);
 void init(GuiState &gui, EmuEnvState &emuenv);

@@ -1,29 +1,44 @@
 #include "main_window.h"
-#include "src/initial-setup/initial_setup_wizard.h"
+#include <config/functions.h>
 #include "src/configuration/settings_window.h"
+#include "src/initial-setup/initial_setup_wizard.h"
 #include "src/user_management_dialog.h"
 #include "ui_main_window.h"
 #include <QHBoxLayout>
-#include <QProgressDialog>
 #include <QInputDialog>
 #include <QLabel>
 #include <QProgressBar>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QThread>
+#include <SDL_events.h>
 #include <config/version.h>
+#include <ctrl/state.h>
 #include <gui-qt/functions.h>
-#include <packages/functions.h>
 #include <gui/functions.h>
-#include <packages/pkg.h>
-#include <rif2zrif.h>
 #include <gui/state.h>
 #include <host/dialog/filesystem.hpp>
 #include <io/state.h>
+#include <packages/functions.h>
+#include <packages/pkg.h>
 #include <packages/sfo.h>
+#include <rif2zrif.h>
+
+#include <QFile>
+#include <QTextStream>
+#include <QDirIterator>
 
 static std::filesystem::path pkg_path = "";
 static std::filesystem::path license_path = "";
 static std::string zRIF;
+
+static int SDLEventWatcher(void *user_data, SDL_Event *event) {
+    auto main_window = static_cast<MainWindow *>(user_data);
+
+    //TODO: implement SDL even handling
+
+    return 0;
+}
 
 MainWindow::MainWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     QMainWindow(parent),
@@ -34,11 +49,23 @@ MainWindow::MainWindow(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
 
     this->setWindowTitle(QString::fromStdString(window_title));
 
+    SDL_AddEventWatch(&SDLEventWatcher, this);
+
+    update_input_timer.setInterval(1);
+    connect(&update_input_timer, &QTimer::timeout, this, &MainWindow::update_input);
+    update_input_timer.start();
+
+    refresh_controllers(emuenv.ctrl, emuenv);
+
     if (!emuenv.cfg.initial_setup) {
         on_initial_setup();
     } else {
         init_live_area();
     }
+}
+
+void MainWindow::update_input() {
+    SDL_PumpEvents();
 }
 
 void MainWindow::init_live_area() {
@@ -96,6 +123,35 @@ void MainWindow::on_app_selection_changed() {
     {
         const auto err = load_app(main_module_id, emuenv, string_utils::utf_to_wide(emuenv.io.app_path));
     }*/
+}
+
+void MainWindow::on_actionInstall_Firmware_triggered() {
+    static std::mutex install_mutex;
+    std::filesystem::path pup_path = "";
+
+    auto result = host::dialog::filesystem::open_file(pup_path, { { "PlayStation Vita Firmware Package", { "PUP" } } });
+
+    if (result == host::dialog::filesystem::Result::SUCCESS) {
+        auto progress_dialog = new QProgressDialog(this);
+        progress_dialog->setWindowTitle("Installation");
+        progress_dialog->setModal(true);
+        progress_dialog->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+        progress_dialog->setCancelButton(nullptr);
+
+        std::lock_guard<std::mutex> lock(install_mutex);
+        std::thread installation([this, &progress_dialog, &pup_path]() {
+            auto progress_callback = [&](float updated_progress) {
+                QMetaObject::invokeMethod(progress_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, static_cast<int>(updated_progress)));
+            };
+            install_pup(emuenv.pref_path.wstring(), pup_path.string(), progress_callback);
+            std::lock_guard<std::mutex> lock(install_mutex);
+
+            gui::get_firmware_version(emuenv);
+            config::serialize_config(emuenv.cfg, emuenv.config_path);
+        });
+        installation.detach();
+        progress_dialog->exec();
+    }
 }
 
 void MainWindow::on_actionInstall_pkg_triggered() {

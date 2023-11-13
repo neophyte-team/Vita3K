@@ -53,6 +53,10 @@
 #include <gui-qt/functions.h>
 #include <gui-qt/state.h>
 #include <QApplication>
+#include <QFile>
+#include <QTextStream>
+#include <QDirIterator>
+#include <QResource>
 #endif
 
 #include <SDL.h>
@@ -168,14 +172,26 @@ int main(int argc, char *argv[]) {
     auto res = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     LOG_ERROR_IF(res == S_FALSE, "Failed to initialize COM Library");
 #endif
+    std::atexit(SDL_Quit);
+
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
+
+    // Enable Switch controller
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_SWITCH, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_JOY_CONS, "1");
+
+    if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+        gui_qt::error("SDL initialisation failed.");
+        return SDLInitFailed;
+    }
 
     LOG_INFO("{}", window_title);
     LOG_INFO("Number of logical CPU cores: {}", SDL_GetCPUCount());
     LOG_INFO("Available ram memory: {} MiB", SDL_GetSystemRAM());
 
     if (!app::init(emuenv, cfg, root_paths)) {
-        //TODO: think about error_dialog implementation
-        //app::error_dialog("Emulated environment initialization failed.", emuenv.window.get());
+        gui_qt::error("Emulated environment initialization failed.");
         return 1;
     }
 
@@ -188,10 +204,21 @@ int main(int argc, char *argv[]) {
     gui_qt::pre_init(gui, emuenv);
     gui::set_config(gui, emuenv, emuenv.io.app_path);
 
+    Q_INIT_RESOURCE(darkstyle);
+    Q_INIT_RESOURCE(lightstyle);
+
+    //TODO: make it configurable (dark/light theme switcher)
+    QFile theme_file(":qdarkstyle/dark/darkstyle.qss");
+    if (theme_file.open(QFile::ReadOnly | QFile::Text)) {
+        QTextStream text_stream(&theme_file);
+        app.setStyleSheet(text_stream.readAll());
+    } else {
+        LOG_ERROR("Failed to apply the stylesheet.");
+    }
+
     const auto default_icon{ emuenv.shared_path / "data/image/icon.png" };
     QApplication::setWindowIcon(QIcon(QString::fromStdString(default_icon.string())));
     QApplication::setStyle("fusion");
-    //TODO: add other styles, like dark theme (check other emulators)
 
     MainWindow main_window{gui, emuenv};
     return QApplication::exec();
