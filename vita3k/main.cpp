@@ -97,10 +97,39 @@ static void run_execv(char *argv[], EmuEnvState &emuenv) {
 };
 
 #ifdef USE_QT_FRONTEND
+void qt_message_handler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
+    Q_UNUSED(context);
+
+    std::string message = msg.toStdString();
+
+    // ignored message
+    if (message != "libpng warning: iCCP: known incorrect sRGB profile") {
+        switch (type) {
+        case QtDebugMsg:
+            LOG_DEBUG(message);
+            break;
+        case QtWarningMsg:
+            LOG_WARN(message);
+            break;
+        case QtInfoMsg:
+            LOG_INFO(message);
+            break;
+        case QtCriticalMsg:
+            LOG_ERROR(message);
+            break;
+        case QtFatalMsg:
+            LOG_CRITICAL(message);
+            break;
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     QCoreApplication::setAttribute(Qt::AA_DisableWindowContextHelpButton);
 
     QApplication app(argc, argv);
+
+    qInstallMessageHandler(qt_message_handler);
 
     ZoneScoped; // Tracy - Track main function scope
     Root root_paths;

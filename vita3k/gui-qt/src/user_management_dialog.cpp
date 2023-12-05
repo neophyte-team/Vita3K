@@ -51,10 +51,15 @@ void UserManagementDialog::on_create_user_button() {
 }
 
 void UserManagementDialog::on_delete_user_button() {
-    gui_qt::delete_user(gui, emuenv, selected_user);
+    auto reply = QMessageBox::question(this, "Delete User", "Are you sure you want to delete this user?",
+        QMessageBox::Yes|QMessageBox::No);
 
-    update_users_list();
-    ui->delete_user_button->setDisabled(true);
+    if (reply == QMessageBox::Yes) {
+        gui_qt::delete_user(gui, emuenv, selected_user);
+
+        update_users_list();
+        ui->delete_user_button->setDisabled(true);
+    }
 }
 
 void UserManagementDialog::update_users_list() {

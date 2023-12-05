@@ -149,6 +149,7 @@ bool install_archive_content(EmuEnvState &emuenv, GuiState *gui, const fs::path 
         } else if (!gui->file_menu.archive_install_dialog) {
             gui::GenericDialogState status = gui::UNK_STATE;
 
+#ifndef USE_QT_FRONTEND
             while (handle_events(emuenv, *gui) && (status == gui::UNK_STATE)) {
                 ImGui_ImplSdl_NewFrame(gui->imgui_state.get());
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -172,6 +173,7 @@ bool install_archive_content(EmuEnvState &emuenv, GuiState *gui, const fs::path 
                 exit(0);
             default: break;
             }
+#endif
         }
     }
 
@@ -233,6 +235,7 @@ bool install_archive_content(EmuEnvState &emuenv, GuiState *gui, const fs::path 
 
     LOG_INFO("{} [{}] installed successfully!", emuenv.app_info.app_title, emuenv.app_info.app_title_id);
 
+#ifndef USE_QT_FRONTEND
     if (!gui->file_menu.archive_install_dialog && (emuenv.app_info.app_category != "theme")) {
         gui::update_notice_info(*gui, emuenv, "content");
         if ((emuenv.app_info.app_category.find("gd") != std::string::npos) || (emuenv.app_info.app_category.find("gp") != std::string::npos)) {
@@ -240,6 +243,7 @@ bool install_archive_content(EmuEnvState &emuenv, GuiState *gui, const fs::path 
             gui::save_apps_cache(*gui, emuenv);
         }
     }
+#endif
 
     return true;
 }

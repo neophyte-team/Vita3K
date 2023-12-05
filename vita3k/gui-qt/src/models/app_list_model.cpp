@@ -2,11 +2,8 @@
 #include <gui/functions.h>
 #include <QDateTime>
 #include <QImage>
-#include <QIcon>
-#include <QPixmap>
 #include <QColorSpace>
 #include <QPainter>
-#include <utility>
 
 AppListModel::AppListModel(GuiState &gui_, EmuEnvState &emuenv_, QObject *parent)
     : QAbstractTableModel(parent),
@@ -60,6 +57,10 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
     case Qt::DecorationRole:
         switch (index.column()) {
         case COLUMN_ICON: {
+            const auto has_state_report = gui.compat.compat_db_loaded && gui.compat.app_compat_db.contains(entry.title_id);
+            const auto compat_state = has_state_report ? gui.compat.app_compat_db[entry.title_id].state : compat::UNKNOWN;
+            const auto compat_state_color = compat_color.at(compat_state);
+
             QImage icon;
 
             auto icon_path = fs::path(emuenv.pref_path) / "ux0/app" / entry.path / "sce_sys/icon0.png";
@@ -72,24 +73,17 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
             }
             icon = icon.scaled(64, 64, Qt::KeepAspectRatio);
 
-            //TODO: find the way of rendering icon without getting libpng warning: iCCP: known incorrect sRGB profile
-            return icon;
-        }
-        case COLUMN_COMP: {
-            if (index.row() >= gui.app_selector.sys_apps.size()) {
-                const auto has_state_report = gui.compat.compat_db_loaded && gui.compat.app_compat_db.contains(entry.title_id);
-                const auto compat_state = has_state_report ? gui.compat.app_compat_db[entry.title_id].state : compat::UNKNOWN;
-                const auto compat_state_color = compat_color.at(compat_state);
-                auto *pixmap = new QPixmap(64, 64);
-                pixmap->fill(Qt::transparent);
-                auto *painter = new QPainter(pixmap);
-                painter->setRenderHint(QPainter::Antialiasing);
-                painter->setBrush(compat_state_color);
-                painter->drawEllipse(pixmap->rect());
-                painter->end();
-                return QIcon(*pixmap);
-            }
-            return {};
+            int32_t circle_size = 20;
+            int32_t x_offset = 5;
+            int32_t y_offset = 5;
+
+            QImage icon_with_circle = icon.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            QPainter painter(&icon_with_circle);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setBrush(QBrush(compat_state_color));
+            painter.drawEllipse(icon_with_circle.width() - x_offset - circle_size, y_offset, circle_size, circle_size);
+
+            return icon_with_circle;
         }
         }
     case Qt::TextAlignmentRole:
@@ -107,14 +101,11 @@ void AppListModel::refresh() {
 
 void AppListModel::refresh_app_list() {
     app_selector.clear();
-    for (auto &app : gui.app_selector.sys_apps)
-        app_selector.emplace_back(app);
     for (auto &app : gui.app_selector.user_apps)
         app_selector.emplace_back(app);
 }
 
 void AppListModel::set_column_display_names() {
-    column_display_names[COLUMN_COMP] = QString("Comp");
     column_display_names[COLUMN_TITLE_ID] = QString("Title ID");
     column_display_names[COLUMN_VER] = QString("Ver");
     column_display_names[COLUMN_CAT] = QString("Cat");

@@ -9,10 +9,6 @@ LiveArea::LiveArea(GuiState &gui_, EmuEnvState &emuenv_, QWidget *parent) :
     ui(new Ui::LiveArea),
     gui{gui_},
     emuenv{emuenv_} {
-    for (auto &app : gui.app_selector.sys_apps)
-        app_selector.emplace_back(app);
-    for (auto &app : gui.app_selector.user_apps)
-        app_selector.emplace_back(app);
 }
 
 void LiveArea::initialize() {
@@ -46,7 +42,6 @@ void LiveArea::init_table_view() {
 
     // TODO: find the way to center all items (why it's not centered after changing section resize mode?)
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_ICON, QHeaderView::ResizeToContents);
-    table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_COMP, QHeaderView::ResizeToContents);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_TITLE_ID, QHeaderView::Fixed);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_VER, QHeaderView::Fixed);
     table_view->horizontalHeader()->setSectionResizeMode(AppListModel::Column::COLUMN_CAT, QHeaderView::Fixed);
@@ -71,7 +66,7 @@ gui::App* LiveArea::get_selected_app() {
         if (!source_index.isValid())
             return nullptr;
 
-        return &app_selector[source_index.row()];
+        return &gui.app_selector.user_apps[source_index.row()];
     }
 
     return nullptr;
