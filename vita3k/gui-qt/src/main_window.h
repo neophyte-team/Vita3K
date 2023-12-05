@@ -27,6 +27,7 @@ public:
 private slots:
     void on_actionInstall_Firmware_triggered();
     void on_actionInstall_pkg_triggered();
+    void on_actionInstall_zip_vpk_triggered();
     void on_actionSettings_triggered();
     void on_actionUser_Management_triggered();
 
@@ -40,13 +41,18 @@ private:
 
     QTimer update_input_timer;
 
-    void start_pkg_installation();
-    void on_licence_button();
-    void on_zrif_button();
-    void on_app_selection_changed();
-
     void update_input();
 
+    void handle_common_dialogs();
+
+    void start_pkg_installation();
+    void on_app_selection_changed();
+
+    void on_licence_button();
+    void on_zrif_button();
+
+    void on_file_button();
+    void on_directory_button();
 };
 
 #endif // MAIN_WINDOW_H

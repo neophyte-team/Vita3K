@@ -14,7 +14,6 @@ class AppListModel final : public QAbstractTableModel {
 public:
     enum Column {
         COLUMN_ICON,
-        COLUMN_COMP,
         COLUMN_TITLE_ID,
         COLUMN_VER,
         COLUMN_CAT,

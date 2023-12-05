@@ -20,6 +20,8 @@ add_library(
 
         src/initial-setup/initial_setup_wizard.cpp
 
+        src/common-dialogs/common_dialog.cpp
+
         src/configuration/settings_window.cpp
         src/configuration/base_settings_widget.cpp
         src/configuration/core_settings_widget.cpp
