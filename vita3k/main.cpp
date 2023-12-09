@@ -57,6 +57,7 @@
 #include <QTextStream>
 #include <QDirIterator>
 #include <QResource>
+#include <QScreen>
 #endif
 
 #include <SDL.h>
@@ -124,7 +125,44 @@ void qt_message_handler(QtMsgType type, const QMessageLogContext &context, const
     }
 }
 
+void set_DPI_attributes() {
+#ifdef _WIN32
+    int temp_argc = 0;
+    char **temp_argv = nullptr;
+    QApplication temp{temp_argc, temp_argv};
+
+    const QScreen* primary_screen = QGuiApplication::primaryScreen();
+    if (primary_screen == nullptr)
+        return;
+
+    const auto screen_rect = primary_screen->geometry();
+    const auto screen_width = screen_rect.width();
+    const auto screen_height = screen_rect.height();
+    const auto real_ratio = primary_screen->logicalDotsPerInch() / 96.0f;
+
+    constexpr float minimum_width = 1350.0f;
+    constexpr float minimum_height = 900.0f;
+
+    const float width_ratio = std::max(1.0f, static_cast<float>(screen_width) / minimum_width);
+    const float height_ratio = std::max(1.0f, static_cast<float>(screen_height) / minimum_height);
+
+    const float max_ratio = std::trunc(std::min(width_ratio, height_ratio));
+
+    if (max_ratio > real_ratio)
+        QApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::Round);
+    else
+        QApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::Floor);
+
+#else
+    QApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
+
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+}
+
 int main(int argc, char *argv[]) {
+    set_DPI_attributes();
     QCoreApplication::setAttribute(Qt::AA_DisableWindowContextHelpButton);
 
     QApplication app(argc, argv);
