@@ -221,7 +221,9 @@ if(USE_QT_FRONTEND)
 
 			# Check for headers
 			find_package(PkgConfig REQUIRED)
-			pkg_check_modules(QT_DEP_GLU QUIET glu>=9.0.0)
+
+			#TODO: check if these are needed
+			#[[pkg_check_modules(QT_DEP_GLU QUIET glu>=9.0.0)
 			if (NOT QT_DEP_GLU_FOUND)
 				message(FATAL_ERROR "Qt bundled package dependency `glu` not found. \
 					Perhaps `libglu1-mesa-dev` needs to be installed?")
@@ -230,8 +232,9 @@ if(USE_QT_FRONTEND)
 			if (NOT QT_DEP_MESA_FOUND)
 				message(FATAL_ERROR "Qt bundled package dependency `dri` not found. \
 					Perhaps `mesa-common-dev` needs to be installed?")
-			endif()
+			endif()]]
 
+			#TODO: check if all these libs are needed
 			# Check for X libraries
 			set(BUNDLED_QT_REQUIREMENTS
 					libxcb-icccm.so.4
